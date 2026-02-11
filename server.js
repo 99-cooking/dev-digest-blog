@@ -4,7 +4,7 @@ import path from 'path';
 import { marked } from 'marked';
 
 const PORT = process.env.PORT || 3000;
-const DIGEST_DIR = process.env.DIGEST_DIR || '/data/workspace/digests/raz-dev-digest';
+const DIGEST_DIR = process.env.DIGEST_DIR || './digests';
 
 const styles = `
   * { box-sizing: border-box; }
