@@ -5,6 +5,7 @@ import { marked } from 'marked';
 
 const PORT = process.env.PORT || 3000;
 const DIGEST_DIR = process.env.DIGEST_DIR || './digests';
+const NEWS_DIR = process.env.NEWS_DIR || './news';
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -143,8 +144,18 @@ function renderIndex(digests) {
 }
 
 function renderPost(digest) {
+  // Try to load news for the same date
+  let newsHtml = '';
+  const newsPath = path.join(NEWS_DIR, digest.filename);
+  try {
+    if (fs.existsSync(newsPath)) {
+      const newsContent = fs.readFileSync(newsPath, 'utf-8');
+      newsHtml = marked(newsContent);
+    }
+  } catch {}
+
   const content = fs.readFileSync(digest.path, 'utf-8');
-  const html = marked(content);
+  const devHtml = marked(content);
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -153,11 +164,15 @@ function renderPost(digest) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>The Daily Grind — ${digest.date}</title>
   <link rel="icon" href="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f99e.png">
-  <style>${styles}</style>
+  <style>${styles}
+  .section-divider { border: none; border-top: 1px solid #1e1e2e; margin: 2rem 0; }
+  .section-label { color: #7a7a8a; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1rem; }
+  </style>
 </head>
 <body>
   <a href="/" class="back">\u2190 All digests</a>
-  <article>${html}</article>
+  ${newsHtml ? `<article>${newsHtml}</article><hr class="section-divider"><p class="section-label">Developer Digest</p>` : ''}
+  <article>${devHtml}</article>
 </body>
 </html>`;
 }
