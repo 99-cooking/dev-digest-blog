@@ -6,6 +6,7 @@ import { marked } from 'marked';
 const PORT = process.env.PORT || 3000;
 const DIGEST_DIR = process.env.DIGEST_DIR || './digests';
 const NEWS_DIR = process.env.NEWS_DIR || './news';
+const SEA_DIR = process.env.SEA_DIR || './sea-fintech';
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -177,6 +178,74 @@ function renderPost(digest) {
 </html>`;
 }
 
+function getSeaDigests() {
+  try {
+    const files = fs.readdirSync(SEA_DIR)
+      .filter(f => f.endsWith('.md'))
+      .sort()
+      .reverse();
+    return files.map(f => ({
+      filename: f,
+      date: f.replace('.md', ''),
+      path: path.join(SEA_DIR, f)
+    }));
+  } catch (e) {
+    return [];
+  }
+}
+
+function renderSeaIndex(digests) {
+  const list = digests.map(d => `
+    <li>
+      <a href="/sea/post/${d.date}">
+        SEA Fintech Weekly — ${d.date}
+      </a>
+      <div class="date">${d.date}</div>
+    </li>
+  `).join('');
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SEA Fintech Weekly — by 99 Cooking</title>
+  <link rel="icon" href="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f99e.png">
+  <style>${styles}</style>
+</head>
+<body>
+  <div class="header">
+    <span class="logo">🦞</span>
+    <div class="title-group">
+      <h1>SEA Fintech Weekly</h1>
+    </div>
+  </div>
+  <p class="subtitle">Southeast Asia neobank intelligence, competitor moves, funding rounds, and regulatory shifts — curated weekly by 99 Cooking.</p>
+  <a class="company-link" href="https://99.cooking">99.cooking</a>
+  <ul class="post-list">${list || '<li>No digests yet — first issue drops Friday</li>'}</ul>
+</body>
+</html>`;
+}
+
+function renderSeaPost(digest) {
+  const content = fs.readFileSync(digest.path, 'utf-8');
+  const html = marked(content);
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SEA Fintech Weekly — ${digest.date}</title>
+  <link rel="icon" href="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f99e.png">
+  <style>${styles}</style>
+</head>
+<body>
+  <a href="/sea" class="back">\u2190 All issues</a>
+  <article>${html}</article>
+</body>
+</html>`;
+}
+
 const server = http.createServer((req, res) => {
   const digests = getDigests();
   const url = new URL(req.url, `http://localhost:${PORT}`);
@@ -184,6 +253,21 @@ const server = http.createServer((req, res) => {
   if (url.pathname === '/' || url.pathname === '') {
     res.writeHead(200, { 'Content-Type': 'text/html' });
     res.end(renderIndex(digests));
+  } else if (url.pathname === '/sea' || url.pathname === '/sea/') {
+    const seaDigests = getSeaDigests();
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end(renderSeaIndex(seaDigests));
+  } else if (url.pathname.startsWith('/sea/post/')) {
+    const date = url.pathname.replace('/sea/post/', '');
+    const seaDigests = getSeaDigests();
+    const digest = seaDigests.find(d => d.date === date);
+    if (digest) {
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(renderSeaPost(digest));
+    } else {
+      res.writeHead(404, { 'Content-Type': 'text/html' });
+      res.end('<h1>Not found</h1>');
+    }
   } else if (url.pathname.startsWith('/post/')) {
     const date = url.pathname.replace('/post/', '');
     const digest = digests.find(d => d.date === date);
